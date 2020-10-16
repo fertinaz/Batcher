@@ -32,14 +32,26 @@ Your Pages site will use the layout and styles from the Jekyll theme you have se
 
 ### Usage
 
-#### Generate
-#### List
 #### Submit
 
 ### Packages
 
 #### Gromacs
+
+Available Gromacs versions are:
+* gromacs-2016.5
+
+##### Environment vaariables
+
+* `GMX_DIR=/opt/gromacs-2016.5`
+* `GMX_BIN=/opt/gromacs-2016.5/bin`
+* `GMX_LIB=/opt/gromacs-2016.5/lib`
+
 #### OpenFOAM
+
+Available Gromacs versions are:
+* openfoam-19.12
+* openfoam-7
 
 ### Support or Contact
 

@@ -5,9 +5,24 @@ Welcome to the documentation page of `batcher`. This guide provides detailed inf
 `batcher` is a command-line application designed to run HPC jobs from your local environment.
 
 ### How to install
-`batcher` is a single binary and all of its dependencies are embedded in it. Therefore its installation procedure is very simple. Users only need to download the appropriate binary pre-compiled for their platform and locate it in a directory they want.
+`batcher` is a single binary and all of its dependencies are embedded in it. Therefore its installation procedure is very simple. Users only need to download the appropriate executable pre-compiled for their `Linux`, `MacOS` or `Windows` system and locate it in a directory they want.
 
-`Also, batcher` is a cross-platform tool. It can be used on `Linux`, `MacOS` and `Windows` systems with `amd64` architecture. It is developed using `C#` and `DotNetCore3.1` and heavily relies on `Azure Batch SDK`.
+`batcher` is developed using `C#` and `DotNetCore3.1` and heavily relies on `Azure Batch SDK`. It is currently supported on `amd64` architectures.
+
+A sample installation procedure looks like:
+```
+curl -LO <URL-HERE>/batcher
+sudo mv batcher /usr/local/bin
+```
+
+or if you don't have `sudo` privileges in your environment, you can also use:
+```
+curl -LO <URL-HERE>/batcher
+mkdir -p $HOME/bin # If doesn't exist
+mv batcher $HOME/bin
+export PATH=$HOME/bin:$PATH # If not included
+```
+
 
 ### Usage
 Following is a sample job submission command:
@@ -26,21 +41,32 @@ Software:      "openfoam-7"
 Command:       "blockMesh && decomposePar -copyZero && mpirun -np 4 simpleFoam -parallel"
 ```
 
-When the `batcher submit` command is executed, first the input job file is being validated. If that is successful, then a cluster is deployed based on the `Nodes` and `NodeType` information. In this example, user requests a 2 `Standard_d4_v3` type nodes.
+Each item in the job file represents a specific information regarding the HPC job that user wants to initiate.
+* Nodes: Number of nodes requested in the cluster.
+* NodeType: Type of the node instances. We follow the naming convention created by Azure. According to the [official documentation](https://docs.microsoft.com/en-us/azure/virtual-machines/dv3-dsv3-series?toc=/azure/virtual-machines/linux/toc.json&bc=/azure/virtual-machines/linux/breadcrumb/toc.json), the node type given in the example has 4 vCPUs and 16 GiB memory.
+* WallClockTime: An estimation for the time required to complete the simulation. This restriction has two purposes; it protects users to be over-charged in case of situations like deadlock, and also **it allows us to check if the users have enough credit amount  in your `batcher` account to complete the job they request.** One thing to note here is that it's certainly safe to write a clock time that is definitely larger than the simulation time. For instance, if you roughly estimate that your simulation takes about 4-6 hours to complete, you can specify 12 hours in the `WallClockTime`. Your job will be completed in 5.5 hours and you will be charged for your consumption, not for the `WallClockTime` you specified. But if you don't have enough credits to complete a 12-hour 2-node job, then your job won't be started.
+* CaseDirectory: Full path to the case folder that includes all the input files that are required to run your simulation. This folder will be uploaded to the `Storage Account` that is created for you on the cloud environment and will then be mounted on the cluster deployed. **The entire process is encrypted**, therefore users don't have to worry about the security and confidentiality of their case files. One restriction for the naming: Folder names with special characters such as `-`, `!` are not supported. 
+* Software: Name of the application that you want to use. These packages are containerized by our team and pushed to our internal container registry. You can find the complete list of tools we support in this guide. We're constantly updating this list, so please check it regularly.
+* Command: Commands you need to run to your batch job.
 
-
-Based on this example, following steps are processed when we execute `batcher submit` command:
-* Deploy a 1-node cluster.
-* Upload case folder `/FullPath/To/YourCase/motorBike` to Azure Storage.
-* Pull `openfoam-19.12` container image from Azure Container Registry.
-* Mount `motorBike` case under the `$AZ_BATCH_NODE_MOUNTS_DIR` folder in the cluster.
-* Run `simpleFoam 2>&1 | tee log.simpleFoam` in this cluster environment.
-* Download results into the case directory specified in the job file.
-
-#### Submit
+Based on the given example, following steps are processed when we execute `batcher submit` command:
+* 2 `Standard_d4_v3` nodes are invoked and a cluster is created. Communication between these nodes are enabled for parallel processing.
+* Case folder `/fullPathToMyCase/motorBike` is read and its content is uploaded to a storage container.
+* Pull `openfoam-7` container image from our container registry.
+* A cloud task is created with the commands specified in the job file. The maximum time for this task is the `WallClockTime`.
+* Task is executed.
+* Download results into the local file system.
 
 ### Packages
-Following list of packages are containerized and available for simulations.
+Following list of packages are containerized and available for simulations. A summary of the available container images:
+* cp2k-7.1
+* gromacs-2016.5
+* nektar-5.0
+* openfoam-7
+* openfoam-19.12
+* openfoam-20.06
+
+Each tool is compiled from scratch with certain compiler flags for optimization. Detailed information can be in the following subsections.
 
 #### CP2K
 Available CP2K versions are:
@@ -52,9 +78,11 @@ Environment variables:
 * `CP2K_LIB=/opt/cp2k-7.1/lib`
 * `CP2K_DATA=/opt/cp2k-7.1/data`
 
-External libraries and dependencies:
+Compiled with:
 * gcc-7.3
 * openmpi-4.0.4
+
+External libraries and dependencies:
 * fftw-3.3.4
 * spfft-0.9.8
 * libint-2.0.6
@@ -71,15 +99,50 @@ Environment variables
 * `GMX_BIN=/opt/gromacs-2016.5/bin`
 * `GMX_LIB=/opt/gromacs-2016.5/lib`
 
+Compiled with:
+* gcc-4.8
+* openmpi-4.0.4
+
 #### Nektar++
 Available Nektar++ versions are:
-* nektar-7.1
+* nektar-5.0
+
+Environment variables
+* `NEKTAR_DIR=/opt/nektar++-5.0.0`
+* `NEKTAR_BIN=$NEKTAR_DIR/bin`
+* `NEKTAR_LIB=$NEKTAR_DIR/lib`
+* `NEKTAR_INC=$NEKTAR_DIR/include`
+
+Compiled with:
+* gcc-4.8
+* openmpi-4.0.4
+
+External libraries and dependencies:
+* openlas
+* boost
+* scotch
+* fftw
+* hdf5
+* arpack
+* metis
+* petsc
 
 #### OpenFOAM
 Available OpenFOAM versions are:
-* openfoam-20.06
-* openfoam-19.12
 * openfoam-7
+* openfoam-19.12
+* openfoam-20.06
+
+OpenFOAM is sourced by default in all containers. Each container image has the same installation procedure and their bashrc file is located under:
+* /opt/OpenFOAM/OpenFOAM-7/etc/bashrc
+* /opt/OpenFOAM/OpenFOAM-19.12/etc/bashrc
+* /opt/OpenFOAM/OpenFOAM-20.06/etc/bashrc
+
+Compiled with:
+* gcc-4.8
+* openmpi-4.0.4
 
 ### Support or Contact
-Having trouble with Pages? Check out our [documentation](https://docs.github.com/categories/github-pages-basics/) or [contact support](https://github.com/contact) and we’ll help you sort it out.
+If you need more information or would like to ask further question about `batcher`, please do not hesitate to reach out.
+* GH issues: https://github.com/fertinaz/Batcher/issues
+* Direct contact with project maintainer: Fatih Ertinaz - fertinaz [at] gmail [dot] com

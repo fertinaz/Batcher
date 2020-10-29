@@ -15,7 +15,7 @@ curl -LO <URL-HERE>/batcher
 sudo mv batcher /usr/local/bin
 ```
 
-or if you don't have `sudo` privileges in your environment, you can also use:
+If you don't have `sudo` privileges in your environment, you can also use:
 ```
 curl -LO <URL-HERE>/batcher
 mkdir -p $HOME/bin # If doesn't exist
@@ -103,6 +103,42 @@ Compiled with:
 * gcc-4.8
 * openmpi-4.0.4
 
+#### Lammps
+Available Lammps versions are:
+* lammps-3mar2020
+
+Name of the binaries:
+* lammps
+* lmp_g++_openmpi
+* lmp_mpi
+
+Environment variables
+* `LAMMPS_DIR=/opt/lammps-3Mar2020`
+* `LAMMPS_BIN=$LAMMPS_DIR/bin`
+
+Compiled with:
+* gcc-4.8
+* openmpi-4.0.4
+
+External libraries and dependencies:
+* asphere
+* cgdna
+* class2
+* colloid
+* coreshell
+* diffraction
+* granular
+* kspace
+* manybody
+* mc
+* meamc
+* misc
+* molecule
+* qeq
+* replica
+* rigid
+* reaxc
+    
 #### Nektar++
 Available Nektar++ versions are:
 * nektar-5.0

@@ -9,7 +9,7 @@ Welcome to the documentation page of `batcher`. This guide provides detailed inf
 
 `batcher` is developed using `C#` and `DotNetCore3.1` and heavily relies on `Azure Batch SDK`. It is currently supported on `amd64` architectures.
 
-A sample installation procedure looks like:
+For `Linux` and `MacOS` users, a sample installation procedure looks like:
 ```
 curl -LO <URL-HERE>/batcher
 sudo mv batcher /usr/local/bin
@@ -23,33 +23,36 @@ mv batcher $HOME/bin
 export PATH=$HOME/bin:$PATH # If not included
 ```
 
-
 ### Usage
-Following is a sample job submission command:
+Following command show a sample job submission:
 ```
 $ batcher submit --file job.yaml                          
 ```
 
-In this command `job.yaml` is the input file that contains all of the information required to run an HPC simulation. Here is how a typical job file looks like:
+In this command, `job.yaml` is the input file that contains all of the information required to run an HPC simulation. Here is how a typical job file looks like:
 ```
 $ cat job.yaml
+Project:       "OpenFOAM motorBike case"
 Nodes:         2
 NodeType:      "Standard_d4_v3"
 WallClockTime: "02:00:00"
 CaseDirectory: "/fullPathToMyCase/motorBike"
+DownloadPath:  "/fullPathToDownloadLocation"
 Software:      "openfoam-7"
 Command:       "blockMesh && decomposePar -copyZero && mpirun -np 4 simpleFoam -parallel"
 ```
 
 Each item in the job file represents a specific information regarding the HPC job that user wants to initiate.
+* Project: A short description or note to keep track of your simulations.
 * Nodes: Number of nodes requested in the cluster.
 * NodeType: Type of the node instances. We follow the naming convention created by Azure. According to the [official documentation](https://docs.microsoft.com/en-us/azure/virtual-machines/dv3-dsv3-series?toc=/azure/virtual-machines/linux/toc.json&bc=/azure/virtual-machines/linux/breadcrumb/toc.json), the node type given in the example has 4 vCPUs and 16 GiB memory.
-* WallClockTime: An estimation for the time required to complete the simulation. This restriction has two purposes; it protects users to be over-charged in case of situations like deadlock, and also **it allows us to check if the users have enough credit amount  in your `batcher` account to complete the job they request.** One thing to note here is that it's certainly safe to write a clock time that is definitely larger than the simulation time. For instance, if you roughly estimate that your simulation takes about 4-6 hours to complete, you can specify 12 hours in the `WallClockTime`. Your job will be completed in 5.5 hours and you will be charged for your consumption, not for the `WallClockTime` you specified. But if you don't have enough credits to complete a 12-hour 2-node job, then your job won't be started.
-* CaseDirectory: Full path to the case folder that includes all the input files that are required to run your simulation. This folder will be uploaded to the `Storage Account` that is created for you on the cloud environment and will then be mounted on the cluster deployed. **The entire process is encrypted**, therefore users don't have to worry about the security and confidentiality of their case files. One restriction for the naming: Folder names with special characters such as `-`, `!` are not supported. 
+* WallClockTime: Time estimation required to complete the simulation. This restriction has two purposes; it protects users to be over-charged from cases like deadlock, and also **it allows us to check if the users have enough credits in their `batcher` account to complete the job.** One important note; it's certainly safe to write a clock time that is larger than the simulation time. For instance, if a user roughly estimates that simulation takes about 4-6 hours to complete, s/he can specify `WallClockTime` as 12 hours. Then, if the job is completed in, say 5.5 hours, s/he is charged for the actual consumption which is 5.5 hours, not for the `WallClockTime` that is written. However, when the user sends a job, we initially check the credit amount based on the `WallClockTime`. As a result, to get a job started, users need to have enough credits for the maximum cost that job requires. Based on the same example, even if the job finishes in 5.5 hours, user needs to have enough credits to complete a 12-hour job because `WallClockTime` is 12 hours.
+* CaseDirectory: Full path to the case folder that includes all the input files that are required to run the simulation. This folder will be uploaded to the `Storage Account` that is created for you on the cloud environment and will then be mounted on the cluster deployed. **The entire process is encrypted**, therefore users don't have to worry about the security and confidentiality of their case files. One restriction for the naming: Folder names with special characters such as `-`, `!` are not supported. 
+* DownloadPath: Location of the directory that the results are downloaded to. We want to keep the input directory as original.
 * Software: Name of the application that you want to use. These packages are containerized by our team and pushed to our internal container registry. You can find the complete list of tools we support in this guide. We're constantly updating this list, so please check it regularly.
 * Command: Commands you need to run to your batch job.
 
-Based on the given example, following steps are processed when we execute `batcher submit` command:
+Based on the given example, following steps are processed when `batcher submit` command is executed:
 * 2 `Standard_d4_v3` nodes are invoked and a cluster is created. Communication between these nodes are enabled for parallel processing.
 * Case folder `/fullPathToMyCase/motorBike` is read and its content is uploaded to a storage container.
 * Pull `openfoam-7` container image from our container registry.
@@ -61,10 +64,12 @@ Based on the given example, following steps are processed when we execute `batch
 Following list of packages are containerized and available for simulations. A summary of the available container images:
 * cp2k-7.1
 * gromacs-2016.5
+* lammps-3mar2020
 * nektar-5.0
 * openfoam-7
 * openfoam-19.12
 * openfoam-20.06
+* su2-7.0.7
 
 Each tool is compiled from scratch with certain compiler flags for optimization. Detailed information can be in the following subsections.
 
@@ -177,6 +182,23 @@ OpenFOAM is sourced by default in all containers. Each container image has the s
 Compiled with:
 * gcc-4.8
 * openmpi-4.0.4
+
+#### SU2
+Available SU2 versions are:
+* su2-7.0.7
+
+Environment variables
+* `SU2_DIR=/opt/su2-7.0.7`
+* `SU2_BIN=$SU2_DIR/bin`
+* `SU2_RUN=$SU2_BIN`
+
+Compiled with:
+* gcc-9.3
+* mpich-3.3.2
+
+External libraries and dependencies:
+* openlas-0.3.6
+* python-3.6
 
 ### Support or Contact
 If you need more information or would like to ask further question about `batcher`, please do not hesitate to reach out.
